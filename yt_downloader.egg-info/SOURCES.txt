@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+yt_downloader/__init__.py
+yt_downloader/cli.py
+yt_downloader.egg-info/PKG-INFO
+yt_downloader.egg-info/SOURCES.txt
+yt_downloader.egg-info/dependency_links.txt
+yt_downloader.egg-info/entry_points.txt
+yt_downloader.egg-info/requires.txt
+yt_downloader.egg-info/top_level.txt
