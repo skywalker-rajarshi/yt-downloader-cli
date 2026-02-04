@@ -24,65 +24,65 @@ def progress_hook(d):
     elif d['status'] == 'finished':
         sys.stdout.write("\nDownload complete!\n")
 
+def get_common_opts():
+    """Returns base options to bypass 403 Forbidden errors."""
+    return {
+        'quiet': True,
+        'no_warnings': True,
+        # Authenticates the request using your browser's session
+        'cookiesfrombrowser': ('chrome',), 
+        # Makes the request look like a standard desktop browser
+        'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'nocheckcertificate': True,
+    }
+
 def get_filesize(url, resolution=None, format_type="mp4"):
     """Print approximate file size without downloading."""
-    ydl_opts = {}
+    ydl_opts = get_common_opts()
+    
     if format_type == "mp3":
         ydl_opts['format'] = 'bestaudio/best'
     elif format_type == "mp4":
-        if resolution:
-            ydl_opts['format'] = f'bestvideo[height<={resolution}][ext=mp4]+bestaudio/best'
-        else:
-            ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio/best'
-    else:  # webm
-        if resolution:
-            ydl_opts['format'] = f'bestvideo[height<={resolution}]+bestaudio/best'
-        else:
-            ydl_opts['format'] = 'best'
+        ydl_opts['format'] = f'bestvideo[height<={resolution or 1080}][ext=mp4]+bestaudio/best'
+    else:
+        ydl_opts['format'] = f'bestvideo[height<={resolution or 1080}]+bestaudio/best'
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        filesize = info.get('filesize_approx') or info.get('filesize')
-        if filesize:
-            print(f"Approx. size: {round(filesize / (1024*1024), 2)} MB")
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            filesize = info.get('filesize_approx') or info.get('filesize')
+            if filesize:
+                print(f"Approx. size: {round(filesize / (1024*1024), 2)} MB")
+    except Exception as e:
+        print(f"Error fetching info: {e}")
 
 def download_video(url, resolution=None, format_type="mp4"):
+    ydl_opts = get_common_opts()
+    ydl_opts.update({
+        'outtmpl': os.path.join(downloads_folder, '%(title)s.%(ext)s'),
+        'progress_hooks': [progress_hook],
+    })
+
     if format_type == "mp3":
-        ydl_opts = {
+        ydl_opts.update({
             'format': 'bestaudio/best',
-            'outtmpl': os.path.join(downloads_folder, '%(title)s.%(ext)s'),
-            'progress_hooks': [progress_hook],
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
-            'quiet': True,
-        }
+        })
     elif format_type == "mp4":
-        if resolution:
-            fmt = f'bestvideo[height<={resolution}][ext=mp4]+bestaudio/best'
-        else:
-            fmt = 'bestvideo[ext=mp4]+bestaudio/best'
-        ydl_opts = {
-            'format': fmt,
-            'outtmpl': os.path.join(downloads_folder, '%(title)s.%(ext)s'),
+        res_str = f'[height<={resolution}]' if resolution else ''
+        ydl_opts.update({
+            'format': f'bestvideo{res_str}[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'merge_output_format': 'mp4',
-            'progress_hooks': [progress_hook],
-            'quiet': True,
-        }
+        })
     else:  # webm
-        if resolution:
-            fmt = f'bestvideo[height<={resolution}]+bestaudio/best'
-        else:
-            fmt = 'best'
-        ydl_opts = {
-            'format': fmt,
-            'outtmpl': os.path.join(downloads_folder, '%(title)s.%(ext)s'),
-            'merge_output_format': None,
-            'progress_hooks': [progress_hook],
-            'quiet': True,
-        }
+        res_str = f'[height<={resolution}]' if resolution else ''
+        ydl_opts.update({
+            'format': f'bestvideo{res_str}+bestaudio/best',
+        })
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
